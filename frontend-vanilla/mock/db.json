@@ -1,0 +1,63 @@
+{
+  "users": [
+    { "id": 1, "email": "warden@college.edu", "full_name": "Prof Raj Kumar", "role": "warden", "created_at": "2025-01-01T00:00:00Z" },
+    { "id": 2, "email": "accountant@college.edu", "full_name": "Ms. Priya Singh", "role": "accountant", "created_at": "2025-01-01T00:00:00Z" },
+    { "id": 3, "email": "caretaker@college.edu", "full_name": "Mr. Vikram", "role": "caretaker", "created_at": "2025-01-01T00:00:00Z" },
+    { "id": 5, "email": "s101@students.edu", "full_name": "Ishan Maurya", "role": "student", "created_at": "2025-07-01T00:00:00Z" },
+    { "id": 6, "email": "s102@students.edu", "full_name": "Aisha Patel", "role": "student", "created_at": "2025-07-01T00:00:00Z" }
+  ],
+  "students": [
+    { "id": 1, "user_id": 5, "roll_number": "BT2025CSE101", "program": "B.Tech CSE", "year": 3, "phone": "9876543210", "emergency_contact": { "name": "Ram Maurya", "phone": "9876543200", "relation": "Father" }, "hostel_eligible": true, "created_at": "2025-07-01T00:00:00Z" },
+    { "id": 2, "user_id": 6, "roll_number": "BT2025ECE102", "program": "B.Tech ECE", "year": 2, "phone": "9876543211", "emergency_contact": { "name": "Anjali Patel", "phone": "9876543201", "relation": "Mother" }, "hostel_eligible": true, "created_at": "2025-07-01T00:00:00Z" }
+  ],
+  "hostel_blocks": [
+    { "id": 1, "name": "A Block", "location": "North Wing", "remarks": "Senior students" },
+    { "id": 2, "name": "B Block", "location": "Central", "remarks": "Mixed block" },
+    { "id": 3, "name": "Guest Block", "location": "South Wing", "remarks": "Guest accommodations" }
+  ],
+  "rooms": [
+    { "id": 1, "block_id": 1, "name": "A-101", "room_type": "student", "capacity": 2, "description": "Twin shared room", "active": true, "created_at": "2025-01-01T00:00:00Z" },
+    { "id": 2, "block_id": 1, "name": "A-102", "room_type": "student", "capacity": 2, "description": "Twin shared room", "active": true, "created_at": "2025-01-01T00:00:00Z" },
+    { "id": 3, "block_id": 2, "name": "B-201", "room_type": "student", "capacity": 3, "description": "Triple room", "active": true, "created_at": "2025-01-01T00:00:00Z" },
+    { "id": 4, "block_id": 3, "name": "G-01", "room_type": "guest", "capacity": 2, "description": "Guest double room", "active": true, "created_at": "2025-01-01T00:00:00Z" },
+    { "id": 5, "block_id": 3, "name": "G-02", "room_type": "guest", "capacity": 2, "description": "Guest double room", "active": true, "created_at": "2025-01-01T00:00:00Z" }
+  ],
+  "room_allocations": [
+    { "id": 1, "student_id": 1, "room_id": 1, "check_in_date": "2025-07-01", "check_out_date": null, "active": true, "allocated_by": 1, "allocated_at": "2025-07-01T00:00:00Z" },
+    { "id": 2, "student_id": 2, "room_id": 2, "check_in_date": "2025-07-15", "check_out_date": null, "active": true, "allocated_by": 1, "allocated_at": "2025-07-15T00:00:00Z" }
+  ],
+  "guest_visit_requests": [
+    { "id": 1, "host_student_id": 1, "guest_name": "Ravi Maurya", "guest_phone": "9876543220", "guest_email": "ravi@email.com", "id_proof_path": null, "id_proof_hash": null, "guest_relation": "Brother", "check_in": "2025-11-18T10:00:00Z", "check_out": "2025-11-20T09:00:00Z", "nights_calculated": 2, "max_overstay_checked": true, "status": "approved", "assigned_guest_room_id": 4, "fee_per_night": 400, "payment_id": null, "created_at": "2025-11-15T00:00:00Z", "requested_by_user_id": 5 }
+  ],
+  "visitor_log": [
+    { "id": 1, "host_student_id": 1, "visitor_name": "Rahul Kumar", "visitor_phone": "9876543230", "purpose": "Study materials delivery", "check_in": "2025-11-15T14:00:00Z", "check_out": "2025-11-15T15:30:00Z", "logged_by": 3, "created_at": "2025-11-15T14:00:00Z" }
+  ],
+  "payments": [
+    { "id": 1, "student_id": 1, "payment_for": "hostel_fee", "amount": 5000, "method": "online", "txn_ref": "TXN20251101001", "recorded_by": 2, "recorded_at": "2025-11-01T00:00:00Z" }
+  ],
+  "fees": [
+    { "id": 1, "student_id": 1, "fee_type": "hostel_fee", "amount": 10000, "due_date": "2025-12-01", "paid": false, "created_at": "2025-11-01T00:00:00Z" },
+    { "id": 2, "student_id": 1, "fee_type": "mess_fee", "amount": 3000, "due_date": "2025-12-15", "paid": false, "created_at": "2025-11-01T00:00:00Z" },
+    { "id": 3, "student_id": 2, "fee_type": "hostel_fee", "amount": 10000, "due_date": "2025-12-01", "paid": true, "created_at": "2025-11-01T00:00:00Z" }
+  ],
+  "complaints": [
+    { "id": 1, "student_id": 1, "room_id": 1, "category": "maintenance", "description": "Water leakage in bathroom ceiling", "status": "in_progress", "assigned_to": 3, "created_at": "2025-11-10T00:00:00Z", "resolved_at": null },
+    { "id": 2, "student_id": 2, "room_id": 2, "category": "cleanliness", "description": "Corridor not cleaned regularly", "status": "open", "assigned_to": null, "created_at": "2025-11-12T00:00:00Z", "resolved_at": null }
+  ],
+  "transfer_requests": [
+    { "id": 1, "student_id": 1, "from_room_id": 1, "to_room_id": 3, "reason": "Want a larger room", "status": "pending", "requested_at": "2025-11-14T00:00:00Z", "processed_by": null, "processed_at": null }
+  ],
+  "waitlist": [
+    { "id": 1, "student_id": 2, "preferred_block": 1, "priority": 1, "created_at": "2025-11-01T00:00:00Z" }
+  ],
+  "inventory": [
+    { "id": 1, "room_id": 1, "item_name": "Single bed", "quantity": 2, "created_at": "2025-01-01T00:00:00Z" },
+    { "id": 2, "room_id": 1, "item_name": "Study table", "quantity": 2, "created_at": "2025-01-01T00:00:00Z" },
+    { "id": 3, "room_id": 4, "item_name": "Double bed", "quantity": 1, "created_at": "2025-01-01T00:00:00Z" }
+  ],
+  "audit_log": [
+    { "id": 1, "user_id": 1, "action": "GUEST_REQUEST_APPROVED", "details": { "request_id": 1, "room_assigned": 4 }, "created_at": "2025-11-15T10:00:00Z" },
+    { "id": 2, "user_id": 5, "action": "GUEST_REQUEST_CREATED", "details": { "guest_name": "Ravi Maurya", "nights": 2 }, "created_at": "2025-11-14T15:30:00Z" }
+  ],
+  "pii_deletion_log": []
+}
