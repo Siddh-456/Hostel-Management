@@ -1,214 +1,162 @@
--- MySQL / MariaDB compatible DDL for the Hostel Management System
--- Uses InnoDB and utf8mb4. Adjust engine/charset if needed.
+-- PostgreSQL schema for the Hostel Management System
 
-SET @@foreign_key_checks = 0;
-
--- 1. Users (roles defined inline as ENUM on the column)
-CREATE TABLE users (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  email VARCHAR(320) NOT NULL UNIQUE,
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
-  full_name VARCHAR(255) NOT NULL,
-  role ENUM('superadmin','warden','accountant','caretaker','student') NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  last_login DATETIME NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  full_name TEXT NOT NULL,
+  role TEXT CHECK(role IN ('superadmin', 'warden', 'accountant', 'caretaker', 'student')) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  last_login TIMESTAMPTZ
+);
 
--- 2. Students (profile)
-CREATE TABLE students (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
-  roll_number VARCHAR(128) UNIQUE,
-  program VARCHAR(255),
-  year INT,
-  phone VARCHAR(32),
-  emergency_contact JSON,
+CREATE TABLE IF NOT EXISTS students (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  roll_number TEXT UNIQUE NOT NULL,
+  program TEXT NOT NULL,
+  year INTEGER NOT NULL,
+  phone TEXT,
+  emergency_contact TEXT,
   hostel_eligible BOOLEAN DEFAULT TRUE,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_students_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
 
--- 3. Hostel blocks & rooms
-CREATE TABLE hostel_blocks (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  location VARCHAR(255),
+CREATE TABLE IF NOT EXISTS hostel_blocks (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  location TEXT,
   remarks TEXT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
-CREATE TABLE rooms (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  block_id INT NULL,
-  name VARCHAR(128) NOT NULL, -- e.g., "B-2-101"
-  room_type ENUM('student','guest') NOT NULL DEFAULT 'student',
-  capacity INT NOT NULL,
+CREATE TABLE IF NOT EXISTS rooms (
+  id SERIAL PRIMARY KEY,
+  block_id INTEGER REFERENCES hostel_blocks(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  room_type TEXT CHECK(room_type IN ('student', 'guest')) NOT NULL,
+  capacity INTEGER NOT NULL,
   description TEXT,
   active BOOLEAN DEFAULT TRUE,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_rooms_block FOREIGN KEY (block_id) REFERENCES hostel_blocks(id) ON DELETE SET NULL,
-  CHECK (capacity > 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE INDEX idx_rooms_block ON rooms(block_id);
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
 
--- 4. Room allocations (students)
-CREATE TABLE room_allocations (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  student_id INT NOT NULL,
-  room_id INT NOT NULL,
+CREATE TABLE IF NOT EXISTS room_allocations (
+  id SERIAL PRIMARY KEY,
+  student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  room_id INTEGER REFERENCES rooms(id) ON DELETE SET NULL,
   check_in_date DATE NOT NULL,
-  check_out_date DATE NULL,
+  check_out_date DATE,
   active BOOLEAN DEFAULT TRUE,
-  allocated_by INT NULL,
-  allocated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_ra_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-  CONSTRAINT fk_ra_room FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE RESTRICT,
-  CONSTRAINT fk_ra_allocby FOREIGN KEY (allocated_by) REFERENCES users(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE INDEX idx_room_alloc_room ON room_allocations(room_id);
-CREATE INDEX idx_room_alloc_student ON room_allocations(student_id);
+  allocated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  allocated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
 
--- 5. Guest visit requests (overnight)
-CREATE TABLE guest_visit_requests (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  host_student_id INT NOT NULL,
-  guest_name VARCHAR(255) NOT NULL,
-  guest_phone VARCHAR(32),
-  guest_email VARCHAR(320),
-  id_proof_path VARCHAR(1024), -- S3 key or file path
-  id_proof_hash VARCHAR(128),
-  guest_relation VARCHAR(128),
-  check_in DATETIME NOT NULL,
-  check_out DATETIME NOT NULL,
-  nights_calculated INT AS (TIMESTAMPDIFF(DAY, check_in, check_out)) STORED,
+CREATE TABLE IF NOT EXISTS guest_visit_requests (
+  id SERIAL PRIMARY KEY,
+  host_student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  guest_name TEXT NOT NULL,
+  guest_phone TEXT,
+  guest_email TEXT,
+  id_proof_path TEXT,
+  id_proof_hash TEXT,
+  guest_relation TEXT,
+  check_in TIMESTAMPTZ NOT NULL,
+  check_out TIMESTAMPTZ NOT NULL,
+  nights_calculated INTEGER,
   max_overstay_checked BOOLEAN DEFAULT FALSE,
-  status ENUM('pending','approved','rejected','cancelled','completed') NOT NULL DEFAULT 'pending',
-  assigned_guest_room_id INT NULL,
-  fee_per_night DECIMAL(10,2) DEFAULT 0,
-  payment_id VARCHAR(255),
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  requested_by_user_id INT NULL,
-  CONSTRAINT fk_gvr_host_student FOREIGN KEY (host_student_id) REFERENCES students(id) ON DELETE CASCADE,
-  CONSTRAINT fk_gvr_assigned_room FOREIGN KEY (assigned_guest_room_id) REFERENCES rooms(id),
-  CONSTRAINT fk_gvr_requested_by FOREIGN KEY (requested_by_user_id) REFERENCES users(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE INDEX idx_guest_requests_host ON guest_visit_requests(host_student_id);
-CREATE INDEX idx_guest_requests_status ON guest_visit_requests(status);
-CREATE INDEX idx_guest_requests_assigned_room ON guest_visit_requests(assigned_guest_room_id);
+  status TEXT CHECK(status IN ('pending', 'approved', 'rejected', 'cancelled', 'completed', 'checked_in')) DEFAULT 'pending',
+  assigned_guest_room_id INTEGER REFERENCES rooms(id) ON DELETE SET NULL,
+  fee_per_night NUMERIC(10, 2),
+  payment_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  requested_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
+);
 
--- 6. Visitor log (daytime visitors)
-CREATE TABLE visitor_log (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  host_student_id INT NOT NULL,
-  visitor_name VARCHAR(255) NOT NULL,
-  visitor_phone VARCHAR(32),
+CREATE TABLE IF NOT EXISTS visitor_log (
+  id SERIAL PRIMARY KEY,
+  host_student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  visitor_name TEXT NOT NULL,
+  visitor_phone TEXT,
   purpose TEXT,
-  check_in DATETIME NOT NULL,
-  check_out DATETIME NULL,
-  logged_by INT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_visitor_host FOREIGN KEY (host_student_id) REFERENCES students(id),
-  CONSTRAINT fk_visitor_logged_by FOREIGN KEY (logged_by) REFERENCES users(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  check_in TIMESTAMPTZ NOT NULL,
+  check_out TIMESTAMPTZ,
+  logged_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
 
--- 7. Payments
-CREATE TABLE payments (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  student_id INT NULL,
-  payment_for ENUM('hostel_fee','mess_fee','guest_fee','other') NOT NULL,
-  amount DECIMAL(12,2) NOT NULL DEFAULT 0,
-  method ENUM('online','offline','card','upi','cash') NULL,
-  txn_ref VARCHAR(255),
-  recorded_by INT NULL,
-  recorded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_payments_student FOREIGN KEY (student_id) REFERENCES students(id),
-  CONSTRAINT fk_payments_recorded_by FOREIGN KEY (recorded_by) REFERENCES users(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE INDEX idx_payments_student ON payments(student_id);
+CREATE TABLE IF NOT EXISTS payments (
+  id SERIAL PRIMARY KEY,
+  student_id INTEGER REFERENCES students(id) ON DELETE SET NULL,
+  payment_for TEXT CHECK(payment_for IN ('hostel_fee', 'mess_fee', 'guest_fee', 'other')) NOT NULL,
+  amount NUMERIC(10, 2) NOT NULL,
+  method TEXT CHECK(method IN ('online', 'offline', 'card', 'upi', 'cash')) NOT NULL,
+  txn_ref TEXT,
+  recorded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  recorded_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
 
--- 8. Fees (master per year / per student)
-CREATE TABLE fees (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  student_id INT NULL,
-  fee_type ENUM('hostel_fee','mess_fee','guest_fee','other') NOT NULL,
-  amount DECIMAL(12,2) NOT NULL DEFAULT 0,
-  due_date DATE NULL,
+CREATE TABLE IF NOT EXISTS fees (
+  id SERIAL PRIMARY KEY,
+  student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
+  fee_type TEXT CHECK(fee_type IN ('hostel_fee', 'mess_fee', 'guest_fee', 'other')) NOT NULL,
+  amount NUMERIC(10, 2) NOT NULL,
+  due_date DATE,
   paid BOOLEAN DEFAULT FALSE,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_fees_student FOREIGN KEY (student_id) REFERENCES students(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
 
--- 9. Complaints
-CREATE TABLE complaints (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  student_id INT NULL,
-  room_id INT NULL,
-  category VARCHAR(255),
+CREATE TABLE IF NOT EXISTS complaints (
+  id SERIAL PRIMARY KEY,
+  student_id INTEGER REFERENCES students(id) ON DELETE SET NULL,
+  room_id INTEGER REFERENCES rooms(id) ON DELETE SET NULL,
+  category TEXT,
   description TEXT,
-  status ENUM('open','in_progress','resolved','closed') DEFAULT 'open',
-  assigned_to INT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  resolved_at DATETIME NULL,
-  CONSTRAINT fk_complaints_student FOREIGN KEY (student_id) REFERENCES students(id),
-  CONSTRAINT fk_complaints_room FOREIGN KEY (room_id) REFERENCES rooms(id),
-  CONSTRAINT fk_complaints_assigned_to FOREIGN KEY (assigned_to) REFERENCES users(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE INDEX idx_complaints_room ON complaints(room_id);
+  status TEXT CHECK(status IN ('open', 'in_progress', 'resolved', 'closed')) DEFAULT 'open',
+  assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  resolved_at TIMESTAMPTZ
+);
 
--- 10. Transfer requests
-CREATE TABLE transfer_requests (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  student_id INT NOT NULL,
-  from_room_id INT NULL,
-  to_room_id INT NULL,
+CREATE TABLE IF NOT EXISTS transfer_requests (
+  id SERIAL PRIMARY KEY,
+  student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  from_room_id INTEGER REFERENCES rooms(id) ON DELETE SET NULL,
+  to_room_id INTEGER REFERENCES rooms(id) ON DELETE SET NULL,
   reason TEXT,
-  status ENUM('pending','approved','rejected','completed') DEFAULT 'pending',
-  requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  processed_by INT NULL,
-  processed_at DATETIME NULL,
-  CONSTRAINT fk_tr_student FOREIGN KEY (student_id) REFERENCES students(id),
-  CONSTRAINT fk_tr_from_room FOREIGN KEY (from_room_id) REFERENCES rooms(id),
-  CONSTRAINT fk_tr_to_room FOREIGN KEY (to_room_id) REFERENCES rooms(id),
-  CONSTRAINT fk_tr_processed_by FOREIGN KEY (processed_by) REFERENCES users(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  status TEXT CHECK(status IN ('pending', 'approved', 'rejected', 'completed')) DEFAULT 'pending',
+  requested_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  processed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  processed_at TIMESTAMPTZ
+);
 
--- 11. Waitlist
-CREATE TABLE waitlist (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  student_id INT NOT NULL,
-  preferred_block INT NULL,
-  priority INT DEFAULT 100,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_waitlist_student FOREIGN KEY (student_id) REFERENCES students(id),
-  CONSTRAINT fk_waitlist_block FOREIGN KEY (preferred_block) REFERENCES hostel_blocks(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS waitlist (
+  id SERIAL PRIMARY KEY,
+  student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  preferred_block INTEGER REFERENCES hostel_blocks(id) ON DELETE SET NULL,
+  priority INTEGER,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
 
--- 12. Inventory
-CREATE TABLE inventory (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  room_id INT NULL,
-  item_name VARCHAR(255),
-  quantity INT DEFAULT 1,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_inventory_room FOREIGN KEY (room_id) REFERENCES rooms(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS inventory (
+  id SERIAL PRIMARY KEY,
+  room_id INTEGER REFERENCES rooms(id) ON DELETE CASCADE,
+  item_name TEXT NOT NULL,
+  quantity INTEGER NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
 
--- 13. Audit / attendance log
-CREATE TABLE audit_log (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NULL,
-  action VARCHAR(255),
-  details JSON,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_audit_user FOREIGN KEY (user_id) REFERENCES users(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS audit_log (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  action TEXT NOT NULL,
+  details TEXT,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
 
--- 14. PII deletion log
-CREATE TABLE pii_deletion_log (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  table_name VARCHAR(255),
-  record_id VARCHAR(255),
-  deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE IF NOT EXISTS pii_deletion_log (
+  id SERIAL PRIMARY KEY,
+  table_name TEXT NOT NULL,
+  record_id TEXT NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   reason TEXT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-SET @@foreign_key_checks = 1;
+);

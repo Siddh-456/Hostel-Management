@@ -24,8 +24,8 @@ router.get('/', authMiddleware, async (req, res) => {
     }
 
     if (req.query.year) {
-      query += " AND strftime('%Y', due_date) = ?";
-      params.push(req.query.year);
+      query += ' AND EXTRACT(YEAR FROM due_date) = ?';
+      params.push(Number(req.query.year));
     }
 
     query += ' ORDER BY paid ASC, due_date ASC, created_at DESC';
@@ -67,7 +67,7 @@ router.post('/:id/mark-paid', authMiddleware, requireRole('superadmin', 'warden'
     }
 
     await db.run(
-      'UPDATE fees SET paid = 1 WHERE id = ?',
+      'UPDATE fees SET paid = TRUE WHERE id = ?',
       [req.params.id]
     );
 

@@ -39,7 +39,7 @@ router.post('/', authMiddleware, requireRole('warden', 'superadmin'), [
   try {
     const result = await db.run(
       'INSERT INTO rooms (block_id, name, room_type, capacity, description, active) VALUES (?, ?, ?, ?, ?, ?)',
-      [req.body.block_id || null, req.body.name, req.body.room_type, req.body.capacity, req.body.description || '', 1]
+      [req.body.block_id || null, req.body.name, req.body.room_type, req.body.capacity, req.body.description || '', true]
     );
 
     const room = await db.get('SELECT * FROM rooms WHERE id = ?', [result.id]);
@@ -57,7 +57,7 @@ router.put('/:id', authMiddleware, requireRole('warden', 'superadmin'), async (r
     
     if (req.body.name !== undefined) { updates.push('name = ?'); values.push(req.body.name); }
     if (req.body.capacity !== undefined) { updates.push('capacity = ?'); values.push(req.body.capacity); }
-    if (req.body.active !== undefined) { updates.push('active = ?'); values.push(req.body.active ? 1 : 0); }
+    if (req.body.active !== undefined) { updates.push('active = ?'); values.push(Boolean(req.body.active)); }
     if (req.body.description !== undefined) { updates.push('description = ?'); values.push(req.body.description); }
 
     if (updates.length === 0) return res.status(400).json({ success: false, message: 'No fields to update' });

@@ -44,11 +44,11 @@ router.post('/', authMiddleware, async (req, res) => {
       req.user.role === 'student' ? req.user.id : null
     );
     const currentAllocation = await db.get(
-      'SELECT * FROM room_allocations WHERE student_id = ? AND active = 1 ORDER BY allocated_at DESC LIMIT 1',
+      'SELECT * FROM room_allocations WHERE student_id = ? AND active = TRUE ORDER BY allocated_at DESC LIMIT 1',
       [student.id]
     );
     const destinationRoom = await db.get(
-      'SELECT * FROM rooms WHERE id = ? AND room_type = ? AND active = 1',
+      'SELECT * FROM rooms WHERE id = ? AND room_type = ? AND active = TRUE',
       [req.body.to_room_id, 'student']
     );
 
@@ -89,7 +89,7 @@ router.post('/:id/approve', authMiddleware, requireRole('superadmin', 'warden'),
     }
 
     const destinationRoom = await db.get(
-      'SELECT * FROM rooms WHERE id = ? AND room_type = ? AND active = 1',
+      'SELECT * FROM rooms WHERE id = ? AND room_type = ? AND active = TRUE',
       [transfer.to_room_id, 'student']
     );
     if (!destinationRoom) {
@@ -102,14 +102,14 @@ router.post('/:id/approve', authMiddleware, requireRole('superadmin', 'warden'),
     );
 
     await db.run(
-      'UPDATE room_allocations SET active = 0, check_out_date = ? WHERE student_id = ? AND active = 1',
+      'UPDATE room_allocations SET active = FALSE, check_out_date = ? WHERE student_id = ? AND active = TRUE',
       [new Date().toISOString(), transfer.student_id]
     );
 
     await db.run(
       `INSERT INTO room_allocations (student_id, room_id, check_in_date, active, allocated_by, allocated_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [transfer.student_id, transfer.to_room_id, new Date().toISOString(), 1, req.user.id, new Date().toISOString()]
+      [transfer.student_id, transfer.to_room_id, new Date().toISOString(), true, req.user.id, new Date().toISOString()]
     );
 
     res.json({ success: true, message: 'Transfer approved' });

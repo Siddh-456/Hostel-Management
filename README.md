@@ -5,14 +5,14 @@
   <p>
     <img src="https://img.shields.io/badge/Frontend-HTML%20%7C%20CSS%20%7C%20Vanilla%20JS-1c3f5b?style=for-the-badge" alt="Frontend stack" />
     <img src="https://img.shields.io/badge/Backend-Node.js%20%7C%20Express-3c7a4a?style=for-the-badge" alt="Backend stack" />
-    <img src="https://img.shields.io/badge/Database-SQLite3-2c2f44?style=for-the-badge" alt="Database" />
+    <img src="https://img.shields.io/badge/Database-PostgreSQL-2c2f44?style=for-the-badge" alt="Database" />
     <img src="https://img.shields.io/badge/Auth-JWT%20%7C%20bcryptjs-bc6a3a?style=for-the-badge" alt="Authentication" />
   </p>
 </div>
 
 ## What This Project Is
 
-Hostel Management System is a full-stack web application built to streamline day-to-day hostel operations for students and staff. It combines a responsive single-page frontend with a REST API backend and a SQLite database so the same platform can handle accommodation, guest visits, fee tracking, complaints, room transfers, inventory, audit logs, and data privacy workflows.
+Hostel Management System is a full-stack web application built to streamline day-to-day hostel operations for students and staff. It combines a responsive single-page frontend with a REST API backend and a PostgreSQL database so the same platform can handle accommodation, guest visits, fee tracking, complaints, room transfers, inventory, audit logs, and data privacy workflows.
 
 This project supports multiple roles including students, wardens, accountants, caretakers, and administrators, making it suitable for academic DBMS/full-stack demonstrations as well as small institutional hostel operations.
 
@@ -45,7 +45,7 @@ This project supports multiple roles including students, wardens, accountants, c
 | --- | --- |
 | Frontend | HTML5, CSS3, Vanilla JavaScript, Fetch API, hash-based SPA routing |
 | Backend | Node.js, Express.js, CORS, dotenv |
-| Database | SQLite3, SQL schema files (`tables.sql`, `data.sql`) |
+| Database | PostgreSQL, SQL schema files (`tables.sql`, `data.sql`) |
 | Security | JWT authentication, bcryptjs password hashing, express-validator |
 | File Handling | multer for uploads, MIME/type and size validation |
 | Dev Tools | npm, nodemon, `http-server`, Git, GitHub |
@@ -156,8 +156,26 @@ Hostel-Management/
 
 - Node.js 18 or newer
 - npm 9 or newer
+- PostgreSQL 14 or newer
 
-### 1. Start the backend
+### 1. Configure PostgreSQL
+
+Create a database and point the backend at it:
+
+```bash
+createdb hostel_management
+```
+
+Create `backend/.env` from [`backend/.env.example`](backend/.env.example) and set at least:
+
+```bash
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/hostel_management
+JWT_SECRET=replace-this-with-a-secure-secret
+```
+
+Use your own PostgreSQL username, password, host, port, and database name if they differ.
+
+### 2. Start the backend
 
 ```bash
 cd backend
@@ -166,9 +184,11 @@ npm run seed
 npm run dev
 ```
 
+`npm run seed` recreates the demo schema and sample data inside the configured PostgreSQL database.
+
 The API starts on `http://localhost:3000`.
 
-### 2. Start the frontend
+### 3. Start the frontend
 
 Open a new terminal:
 
@@ -180,7 +200,7 @@ npm run serve
 
 Open `http://localhost:5173`.
 
-### 3. Default demo accounts
+### 4. Default demo accounts
 
 | Role | Email | Password |
 | --- | --- | --- |
@@ -195,7 +215,7 @@ Open `http://localhost:5173`.
 - The frontend automatically uses `http://localhost:3000/api` when running on localhost.
 - In deployed environments, the frontend defaults to `${window.location.origin}/api`.
 - The backend exposes route groups for auth, users, rooms, blocks, allocations, guest requests, visitor logs, fees, payments, complaints, transfers, waitlist, inventory, audit logs, PII deletion, and uploads.
-- The database layer is powered by SQLite and seeded through `backend/scripts/seed.js`.
+- The database layer is powered by PostgreSQL and seeded through `backend/scripts/seed.js`.
 
 ## Deployment Guide
 
@@ -229,10 +249,11 @@ Recommended production environment variables:
 JWT_SECRET=replace-this-with-a-secure-secret
 NODE_ENV=production
 PORT=3000
-DB_PATH=./data/hostel-app.db
+DATABASE_URL=postgresql://username:password@host:5432/hostel_management
+PGSSL=true
 ```
 
-For long-running production use, a host with persistent storage is the safest choice because the app stores data in SQLite database files.
+For production, use a managed or persistent PostgreSQL instance such as Neon, Supabase, Railway, Render, AWS RDS, or a self-hosted PostgreSQL server.
 
 ### C. Deploy the frontend
 
@@ -275,8 +296,8 @@ pm2 save
 - `ARCHITECTURE.md` - deeper system design notes
 - `API-CHEATSHEET.md` - endpoint quick reference
 - `QUICK-START.md` - quick onboarding notes
-- `tables.sql` - schema definition
-- `data.sql` - sample SQL data
+- `tables.sql` - PostgreSQL schema definition
+- `data.sql` - PostgreSQL sample data
 
 ## License
 

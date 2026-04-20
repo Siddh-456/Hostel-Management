@@ -42,13 +42,13 @@ router.post('/', authMiddleware, requireRole('superadmin', 'warden'), async (req
     }
 
     await db.run(
-      'UPDATE room_allocations SET active = 0, check_out_date = ? WHERE student_id = ? AND active = 1',
+      'UPDATE room_allocations SET active = FALSE, check_out_date = ? WHERE student_id = ? AND active = TRUE',
       [req.body.check_in_date, student.id]
     );
 
     const result = await db.run(
       'INSERT INTO room_allocations (student_id, room_id, check_in_date, active, allocated_by) VALUES (?, ?, ?, ?, ?)',
-      [student.id, req.body.room_id, req.body.check_in_date, 1, req.user.id]
+      [student.id, req.body.room_id, req.body.check_in_date, true, req.user.id]
     );
 
     const allocation = await db.get('SELECT * FROM room_allocations WHERE id = ?', [result.id]);
@@ -65,7 +65,7 @@ router.put('/:id', authMiddleware, requireRole('superadmin', 'warden'), async (r
     const values = [];
     
     if (req.body.check_out_date !== undefined) { updates.push('check_out_date = ?'); values.push(req.body.check_out_date); }
-    if (req.body.active !== undefined) { updates.push('active = ?'); values.push(req.body.active ? 1 : 0); }
+    if (req.body.active !== undefined) { updates.push('active = ?'); values.push(Boolean(req.body.active)); }
 
     if (updates.length === 0) return res.status(400).json({ success: false, message: 'No fields to update' });
 

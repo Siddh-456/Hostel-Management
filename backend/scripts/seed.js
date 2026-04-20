@@ -1,24 +1,5 @@
 require('dotenv').config();
-const fs = require('fs');
 const bcrypt = require('bcryptjs');
-const config = require('../config/env');
-
-const cleanupFiles = [
-  `${config.DB_PATH}-journal`,
-  `${config.DB_PATH}-wal`,
-  `${config.DB_PATH}-shm`
-];
-
-cleanupFiles.forEach((filePath) => {
-  if (fs.existsSync(filePath)) {
-    try {
-      fs.rmSync(filePath, { force: true });
-    } catch (error) {
-      console.warn(`Warning: could not remove ${filePath}: ${error.message}`);
-    }
-  }
-});
-
 const db = require('../config/database');
 
 async function seed() {
@@ -27,23 +8,21 @@ async function seed() {
 
     await db.initialize();
     await db.exec(`
-      PRAGMA foreign_keys = OFF;
-      DROP TABLE IF EXISTS pii_deletion_log;
-      DROP TABLE IF EXISTS audit_log;
-      DROP TABLE IF EXISTS inventory;
-      DROP TABLE IF EXISTS waitlist;
-      DROP TABLE IF EXISTS transfer_requests;
-      DROP TABLE IF EXISTS complaints;
-      DROP TABLE IF EXISTS payments;
-      DROP TABLE IF EXISTS fees;
-      DROP TABLE IF EXISTS visitor_log;
-      DROP TABLE IF EXISTS guest_visit_requests;
-      DROP TABLE IF EXISTS room_allocations;
-      DROP TABLE IF EXISTS rooms;
-      DROP TABLE IF EXISTS hostel_blocks;
-      DROP TABLE IF EXISTS students;
-      DROP TABLE IF EXISTS users;
-      PRAGMA foreign_keys = ON;
+      DROP TABLE IF EXISTS pii_deletion_log CASCADE;
+      DROP TABLE IF EXISTS audit_log CASCADE;
+      DROP TABLE IF EXISTS inventory CASCADE;
+      DROP TABLE IF EXISTS waitlist CASCADE;
+      DROP TABLE IF EXISTS transfer_requests CASCADE;
+      DROP TABLE IF EXISTS complaints CASCADE;
+      DROP TABLE IF EXISTS payments CASCADE;
+      DROP TABLE IF EXISTS fees CASCADE;
+      DROP TABLE IF EXISTS visitor_log CASCADE;
+      DROP TABLE IF EXISTS guest_visit_requests CASCADE;
+      DROP TABLE IF EXISTS room_allocations CASCADE;
+      DROP TABLE IF EXISTS rooms CASCADE;
+      DROP TABLE IF EXISTS hostel_blocks CASCADE;
+      DROP TABLE IF EXISTS students CASCADE;
+      DROP TABLE IF EXISTS users CASCADE;
     `);
     await db.initialize(true);
 
@@ -71,9 +50,8 @@ async function seed() {
 
     // Create student records
     const studentUsers = createdUsers.filter((user) => user.role === 'student');
-    const createdStudents = [];
     for (const user of studentUsers) {
-      const result = await db.run(
+      await db.run(
         'INSERT INTO students (user_id, roll_number, program, year, phone) VALUES (?, ?, ?, ?, ?)',
         [user.id, `STU${String(user.id).padStart(4, '0')}`, 'B.Tech', 2, '9876543210']
       );
@@ -106,14 +84,14 @@ async function seed() {
       for (let j = 1; j <= 3; j++) {
         const result = await db.run(
           'INSERT INTO rooms (block_id, name, room_type, capacity, description, active) VALUES (?, ?, ?, ?, ?, ?)',
-          [block.id, `Room ${j}`, 'student', 2, 'Standard room', 1]
+          [block.id, `Room ${j}`, 'student', 2, 'Standard room', true]
         );
         rooms.push({ id: result.id, block_id: block.id, capacity: 2, room_type: 'student' });
       }
 
       const guestRoom = await db.run(
         'INSERT INTO rooms (block_id, name, room_type, capacity, description, active) VALUES (?, ?, ?, ?, ?, ?)',
-        [block.id, `Guest ${i + 1}`, 'guest', 1, 'Guest accommodation room', 1]
+        [block.id, `Guest ${i + 1}`, 'guest', 1, 'Guest accommodation room', true]
       );
       rooms.push({ id: guestRoom.id, block_id: block.id, capacity: 1, room_type: 'guest' });
     }
@@ -126,7 +104,7 @@ async function seed() {
       checkInDate.setDate(checkInDate.getDate() - 30);
       await db.run(
         'INSERT INTO room_allocations (student_id, room_id, check_in_date, active, allocated_by) VALUES (?, ?, ?, ?, ?)',
-        [createdStudentRecords[i].id, studentRooms[i].id, checkInDate.toISOString().split('T')[0], 1, createdUsers[1].id]
+        [createdStudentRecords[i].id, studentRooms[i].id, checkInDate.toISOString().split('T')[0], true, createdUsers[1].id]
       );
       console.log(`✓ Allocated room to ${studentUsers[i].full_name}`);
     }

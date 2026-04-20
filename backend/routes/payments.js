@@ -59,7 +59,7 @@ router.post('/', authMiddleware, async (req, res) => {
     );
 
     if (req.body.fee_id) {
-      await db.run('UPDATE fees SET paid = 1 WHERE id = ?', [req.body.fee_id]);
+      await db.run('UPDATE fees SET paid = TRUE WHERE id = ?', [req.body.fee_id]);
     }
 
     const payment = await db.get('SELECT * FROM payments WHERE id = ?', [result.id]);

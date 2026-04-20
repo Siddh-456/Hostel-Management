@@ -62,7 +62,7 @@ router.post('/', authMiddleware, async (req, res) => {
       req.user.role === 'student' ? req.user.id : null
     );
     const currentAllocation = await db.get(
-      'SELECT room_id FROM room_allocations WHERE student_id = ? AND active = 1 ORDER BY allocated_at DESC LIMIT 1',
+      'SELECT room_id FROM room_allocations WHERE student_id = ? AND active = TRUE ORDER BY allocated_at DESC LIMIT 1',
       [student.id]
     );
 

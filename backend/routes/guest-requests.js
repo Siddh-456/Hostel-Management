@@ -135,7 +135,7 @@ router.post('/:id/approve', authMiddleware, requireRole('warden', 'caretaker', '
     }
 
     const room = await db.get(
-      'SELECT * FROM rooms WHERE id = ? AND room_type = ? AND active = 1',
+      'SELECT * FROM rooms WHERE id = ? AND room_type = ? AND active = TRUE',
       [req.body.assigned_guest_room_id, 'guest']
     );
     if (!room) return res.status(404).json({ success: false, message: 'Guest room not found' });
@@ -158,7 +158,7 @@ router.post('/:id/approve', authMiddleware, requireRole('warden', 'caretaker', '
     }
 
     await db.run(
-      'UPDATE guest_visit_requests SET status = ?, assigned_guest_room_id = ?, max_overstay_checked = 1 WHERE id = ?',
+      'UPDATE guest_visit_requests SET status = ?, assigned_guest_room_id = ?, max_overstay_checked = TRUE WHERE id = ?',
       ['approved', req.body.assigned_guest_room_id, req.params.id]
     );
 
